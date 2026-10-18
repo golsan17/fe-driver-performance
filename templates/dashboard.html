@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formula E Gen3 Evo Pit-Wall Telemetry</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #080b11;
+      --bg-card: #0f1522;
+      --bg-card-hover: #141c2d;
+      --border-color: #1e293b;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --cyan-electric: #00f0ff;
+      --green-volt: #39ff14;
+      --gold-target: #ffd700;
+      --red-limit: #ff3366;
+      --card-radius: 12px;
+      --font-display: 'Chakra Petch', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      line-height: 1.5;
+      padding-bottom: 40px;
+    }
+
+    /* Top Pit-Wall Header */
+    header {
+      background: linear-gradient(180deg, #0f172a 0%, #080b11 100%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #00f0ff 0%, #0077ff 100%);
+      color: #000;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .header-title h1 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-title p {
+      font-size: 12px;
+      color: var(--cyan-electric);
+      font-family: var(--font-mono);
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .telemetry-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(57, 255, 20, 0.1);
+      border: 1px solid rgba(57, 255, 20, 0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--green-volt);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green-volt);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green-volt);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Main Container */
+    .dashboard-container {
+      max-width: 1440px;
+      margin: 24px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1100px) {
+      .dashboard-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Card Panels */
+    .pit-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 10px;
+    }
+
+    .card-header h2 {
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-header h2 span.icon {
+      color: var(--cyan-electric);
+    }
+
+    /* Form & Controls */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .form-group label span.val-display {
+      color: var(--cyan-electric);
+      font-weight: 700;
+    }
+
+    .form-control {
+      width: 100%;
+      background: #080d17;
+      border: 1px solid #243048;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--cyan-electric);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--cyan-electric);
+      height: 6px;
+      border-radius: 3px;
+      background: #1e293b;
+      outline: none;
+    }
+
+    .slider-number {
+      width: 78px;
+      background: #080d17;
+      border: 1px solid #243048;
+      color: #fff;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      text-align: right;
+    }
+
+    /* Preset Buttons */
+    .presets-container {
+      margin: 16px 0;
+    }
+
+    .presets-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+      margin-bottom: 8px;
+      font-family: var(--font-mono);
+    }
+
+    .presets-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-preset {
+      background: #141c2c;
+      border: 1px solid #27364f;
+      color: #cbd5e1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+    }
+
+    .btn-preset:hover {
+      background: #1e293b;
+      border-color: var(--cyan-electric);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, #00f0ff 0%, #0077ff 100%);
+      color: #040811;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0, 240, 255, 0.3);
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+
+    .btn-submit:hover {
+      filter: brightness(1.15);
+      box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5);
+      transform: translateY(-1px);
+    }
+
+    /* Metrics Overview Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .metric-box {
+      background: #0d131f;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      margin-bottom: 6px;
+    }
+
+    .metric-val {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .metric-val.score-excellent {
+      color: var(--green-volt);
+      text-shadow: 0 0 15px rgba(57, 255, 20, 0.35);
+    }
+
+    .metric-val.score-optimal {
+      color: var(--cyan-electric);
+      text-shadow: 0 0 15px rgba(0, 240, 255, 0.35);
+    }
+
+    .metric-val.score-needs-improvement {
+      color: var(--red-limit);
+      text-shadow: 0 0 15px rgba(255, 51, 102, 0.35);
+    }
+
+    .metric-val span.sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .rating-badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .badge-excellent {
+      background: rgba(57, 255, 20, 0.15);
+      border: 1px solid var(--green-volt);
+      color: var(--green-volt);
+    }
+
+    .badge-optimal {
+      background: rgba(0, 240, 255, 0.15);
+      border: 1px solid var(--cyan-electric);
+      color: var(--cyan-electric);
+    }
+
+    .badge-needs_improvement {
+      background: rgba(255, 51, 102, 0.15);
+      border: 1px solid var(--red-limit);
+      color: var(--red-limit);
+    }
+
+    .sensor-alert-box {
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sensor-ok {
+      background: rgba(57, 255, 20, 0.08);
+      border: 1px solid rgba(57, 255, 20, 0.25);
+      color: var(--green-volt);
+    }
+
+    .sensor-fault {
+      background: rgba(255, 51, 102, 0.15);
+      border: 1px solid var(--red-limit);
+      color: #ff99b0;
+      animation: alertPulse 1.8s infinite;
+    }
+
+    @keyframes alertPulse {
+      0% { box-shadow: 0 0 0 rgba(255, 51, 102, 0.2); }
+      50% { box-shadow: 0 0 16px rgba(255, 51, 102, 0.5); }
+      100% { box-shadow: 0 0 0 rgba(255, 51, 102, 0.2); }
+    }
+
+    /* Radio Feedback Feed */
+    .feedback-feed {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .feedback-item {
+      background: #0d131f;
+      border: 1px solid #1a2336;
+      border-left: 4px solid var(--cyan-electric);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: #e2e8f0;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .feedback-item.alert-fault {
+      border-left-color: var(--red-limit);
+      background: rgba(255, 51, 102, 0.07);
+    }
+
+    .feedback-item.alert-excellent {
+      border-left-color: var(--green-volt);
+    }
+
+    .feedback-item.alert-suboptimal {
+      border-left-color: var(--gold-target);
+    }
+
+    /* Chart Viewer */
+    .chart-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .chart-container {
+      position: relative;
+      background: #080b11;
+      border-radius: 8px;
+      border: 1px solid #1a2233;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 380px;
+    }
+
+    .chart-container img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: opacity 0.2s ease;
+    }
+
+    .chart-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #29384d;
+      color: var(--cyan-electric);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-ghost:hover {
+      background: rgba(0, 240, 255, 0.1);
+      border-color: var(--cyan-electric);
+    }
+
+    /* Technical Rules Drawer */
+    .specs-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .specs-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .spec-card {
+      background: #0a0f19;
+      border: 1px solid #1a2436;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .spec-card .title {
+      font-size: 11px;
+      color: #64748b;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .spec-card .value {
+      font-size: 16px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #fff;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <div class="brand-badge">FIA GEN3 EVO</div>
+      <div class="header-title">
+        <h1>PIT-WALL TELEMETRY CONSOLE</h1>
+        <p>REAL-TIME DRIVER PERFORMANCE & ENERGY MANAGEMENT</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="telemetry-indicator">
+        <div class="pulse-dot"></div>
+        LIVE MGU-K STREAM
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <main class="dashboard-container">
+    
+    <!-- Left Column: Controls & Configuration -->
+    <aside>
+      <div class="pit-card">
+        <div class="card-header">
+          <h2><span class="icon">⚡</span> Driver & Telemetry Input</h2>
+        </div>
+
+        <form id="telemetryForm" onsubmit="handleEvaluationSubmit(event)">
+          <div class="form-group">
+            <label for="driverSelect">Active Driver</label>
+            <select id="driverSelect" class="form-control" name="driver_name">
+              <option value="Pascal Wehrlein" {% if initial_eval.driver_name == 'Pascal Wehrlein' %}selected{% endif %}>Pascal Wehrlein (#94 Porsche)</option>
+              <option value="Mitch Evans" {% if initial_eval.driver_name == 'Mitch Evans' %}selected{% endif %}>Mitch Evans (#9 Jaguar TCS)</option>
+              <option value="Jake Dennis" {% if initial_eval.driver_name == 'Jake Dennis' %}selected{% endif %}>Jake Dennis (#27 Andretti)</option>
+              <option value="Jean-Éric Vergne" {% if initial_eval.driver_name == 'Jean-Éric Vergne' %}selected{% endif %}>Jean-Éric Vergne (#25 DS PENSKE)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="lapInput">Lap Number</label>
+            <input type="number" id="lapInput" class="form-control" name="lap_number" value="{{ initial_eval.lap_number }}" min="1" max="45">
+          </div>
+
+          <!-- Turn 3 Peak Regen -->
+          <div class="form-group">
+            <label>
+              <span>Turn 3 Regen (Heavy Zone)</span>
+              <span id="t3Label" class="val-display">{{ initial_eval.turn_3_peak_regen_kw }} kW</span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="t3Slider" min="150" max="700" step="5" value="{{ initial_eval.turn_3_peak_regen_kw }}" oninput="syncInputs('t3Slider', 't3Number', 't3Label', ' kW')">
+              <input type="number" id="t3Number" class="slider-number" name="turn_3_peak_regen_kw" value="{{ initial_eval.turn_3_peak_regen_kw }}" min="0" max="1000" oninput="syncInputs('t3Number', 't3Slider', 't3Label', ' kW')">
+            </div>
+          </div>
+
+          <!-- Turn 8 Peak Regen -->
+          <div class="form-group">
+            <label>
+              <span>Turn 8 Regen (Heavy Zone)</span>
+              <span id="t8Label" class="val-display">{{ initial_eval.turn_8_peak_regen_kw }} kW</span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="t8Slider" min="150" max="700" step="5" value="{{ initial_eval.turn_8_peak_regen_kw }}" oninput="syncInputs('t8Slider', 't8Number', 't8Label', ' kW')">
+              <input type="number" id="t8Number" class="slider-number" name="turn_8_peak_regen_kw" value="{{ initial_eval.turn_8_peak_regen_kw }}" min="0" max="1000" oninput="syncInputs('t8Number', 't8Slider', 't8Label', ' kW')">
+            </div>
+          </div>
+
+          <!-- Turn 13 Peak Regen -->
+          <div class="form-group">
+            <label>
+              <span>Turn 13 Regen (Heavy Zone)</span>
+              <span id="t13Label" class="val-display">{{ initial_eval.turn_13_peak_regen_kw }} kW</span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="t13Slider" min="150" max="700" step="5" value="{{ initial_eval.turn_13_peak_regen_kw }}" oninput="syncInputs('t13Slider', 't13Number', 't13Label', ' kW')">
+              <input type="number" id="t13Number" class="slider-number" name="turn_13_peak_regen_kw" value="{{ initial_eval.turn_13_peak_regen_kw }}" min="0" max="1000" oninput="syncInputs('t13Number', 't13Slider', 't13Label', ' kW')">
+            </div>
+          </div>
+
+          <!-- Lift-and-Coast Distance -->
+          <div class="form-group">
+            <label>
+              <span>Lift-and-Coast Distance</span>
+              <span id="coastLabel" class="val-display">{{ initial_eval.lift_and_coast_distance_m }} m</span>
+            </label>
+            <div class="slider-row">
+              <input type="range" id="coastSlider" min="0" max="100" step="1" value="{{ initial_eval.lift_and_coast_distance_m }}" oninput="syncInputs('coastSlider', 'coastNumber', 'coastLabel', ' m')">
+              <input type="number" id="coastNumber" class="slider-number" name="lift_and_coast_distance_m" value="{{ initial_eval.lift_and_coast_distance_m }}" min="0" max="200" oninput="syncInputs('coastNumber', 'coastSlider', 'coastLabel', ' m')">
+            </div>
+          </div>
+
+          <!-- Race Engineer Presets -->
+          <div class="presets-container">
+            <div class="presets-title">Quick Simulation Scenarios</div>
+            <div class="presets-grid">
+              <button type="button" class="btn-preset" onclick="applyPreset(530, 490, 520, 55)">
+                ⚡ Optimal Run
+              </button>
+              <button type="button" class="btn-preset" onclick="applyPreset(440, 430, 470, 32)">
+                ⚠️ Under-Regen
+              </button>
+              <button type="button" class="btn-preset" onclick="applyPreset(640, 490, 510, 52)">
+                🚨 Sensor Spike
+              </button>
+              <button type="button" class="btn-preset" onclick="applyPreset(520, 485, 510, 15)">
+                ❌ Late Braker
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="submitBtn" class="btn-submit">
+            RUN TELEMETRY ANALYSIS
+          </button>
+        </form>
+      </div>
+
+      <!-- Technical Specifications Reference Card -->
+      <div class="pit-card">
+        <div class="card-header">
+          <h2><span class="icon">📋</span> Technical Regulations</h2>
+        </div>
+        <div class="specs-grid">
+          <div class="spec-card">
+            <div class="title">Max Regen Cap</div>
+            <div class="value" style="color: var(--red-limit);">600 kW</div>
+          </div>
+          <div class="spec-card">
+            <div class="title">T3 & T13 Target</div>
+            <div class="value" style="color: var(--gold-target);">≥ 500 kW</div>
+          </div>
+          <div class="spec-card">
+            <div class="title">Turn 8 Target</div>
+            <div class="value" style="color: var(--cyan-electric);">≥ 480 kW</div>
+          </div>
+          <div class="spec-card">
+            <div class="title">Target Coast</div>
+            <div class="value" style="color: var(--green-volt);">≥ 50 m</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Column: Live Analysis, Chart & Feedback -->
+    <section>
+      <!-- Sensor Fault Banner -->
+      <div id="sensorBanner" class="sensor-alert-box {% if initial_eval.sensor_fault_detected %}sensor-fault{% else %}sensor-ok{% endif %}">
+        <span id="sensorIcon">{% if initial_eval.sensor_fault_detected %}⚠️{% else %}✓{% endif %}</span>
+        <span id="sensorText">
+          {% if initial_eval.sensor_fault_detected %}
+            SENSOR FAULT DETECTED: Telemetry exceeded 600 kW physical limit. Value capped at 600.0 kW.
+          {% else %}
+            MGU-K SENSORS OPERATING NORMALLY (Within 600 kW Gen3 Evo Physical Envelope)
+          {% endif %}
+        </span>
+      </div>
+
+      <!-- Key Metrics -->
+      <div class="metrics-grid">
+        <!-- Efficiency Score -->
+        <div class="metric-box">
+          <div class="metric-label">Efficiency Score</div>
+          <div id="scoreVal" class="metric-val {% if initial_eval.rating == 'EXCELLENT' %}score-excellent{% elif initial_eval.rating == 'OPTIMAL' %}score-optimal{% else %}score-needs-improvement{% endif %}">
+            {{ initial_eval.efficiency_score }}<span class="sub">/ 100</span>
+          </div>
+          <div id="ratingBadge" class="rating-badge {% if initial_eval.rating == 'EXCELLENT' %}badge-excellent{% elif initial_eval.rating == 'OPTIMAL' %}badge-optimal{% else %}badge-needs_improvement{% endif %}">
+            {{ initial_eval.rating }}
+          </div>
+        </div>
+
+        <!-- Braking Zone Points -->
+        <div class="metric-box">
+          <div class="metric-label">Heavy Braking Recovery</div>
+          <div id="brakingPointsVal" class="metric-val" style="color: var(--cyan-electric);">
+            {{ initial_eval.braking_points }}<span class="sub">/ 50 pts</span>
+          </div>
+          <div style="font-size: 12px; color: #94a3b8; font-family: var(--font-mono); margin-top: 8px;">
+            T3: <span id="t3Status">{{ '✓ 20 pts' if initial_eval.turn_3_peak_regen_kw >= 500 else '✗ 0 pts' }}</span> | 
+            T8: <span id="t8Status">{{ '✓ 10 pts' if initial_eval.turn_8_peak_regen_kw >= 480 else '✗ 0 pts' }}</span> | 
+            T13: <span id="t13Status">{{ '✓ 20 pts' if initial_eval.turn_13_peak_regen_kw >= 500 else '✗ 0 pts' }}</span>
+          </div>
+        </div>
+
+        <!-- Lift-and-Coast Points -->
+        <div class="metric-box">
+          <div class="metric-label">Lift-and-Coast Management</div>
+          <div id="coastingPointsVal" class="metric-val" style="color: var(--green-volt);">
+            {{ initial_eval.lift_and_coast_points }}<span class="sub">/ 50 pts</span>
+          </div>
+          <div style="font-size: 12px; color: #94a3b8; font-family: var(--font-mono); margin-top: 8px;">
+            Target Threshold: ≥ 50m (50 pts) | 25-49m (25 pts)
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry Chart Viewer -->
+      <div class="chart-panel">
+        <div class="card-header">
+          <h2><span class="icon">📊</span> Matplotlib Lap Telemetry Stream</h2>
+          <span style="font-size: 12px; font-family: var(--font-mono); color: var(--cyan-electric);">GET /api/v1/chart</span>
+        </div>
+        <div class="chart-container">
+          <img id="telemetryChart" src="/api/v1/chart?turn_3_regen={{ initial_eval.turn_3_peak_regen_kw }}&turn_8_regen={{ initial_eval.turn_8_peak_regen_kw }}&turn_13_regen={{ initial_eval.turn_13_peak_regen_kw }}&coasting_distance={{ initial_eval.lift_and_coast_distance_m }}&lap_number={{ initial_eval.lap_number }}&driver_name={{ initial_eval.driver_name | urlencode }}" alt="Formula E Lap Telemetry Chart">
+        </div>
+        <div class="chart-toolbar">
+          <span>Dark Background • Electric Cyan (#00f0ff) & Volt Green (#39ff14)</span>
+          <a id="downloadChartBtn" href="/api/v1/chart" download="telemetry.png" class="btn-ghost">
+            ⬇ Export High-Res PNG
+          </a>
+        </div>
+      </div>
+
+      <!-- Race Engineer Radio Feedback -->
+      <div class="pit-card">
+        <div class="card-header">
+          <h2><span class="icon">📻</span> Pit-Wall Radio Transmissions & Actionable Feedback</h2>
+          <span style="font-size: 11px; font-family: var(--font-mono); color: #64748b;">POST /api/v1/evaluate</span>
+        </div>
+        <ul id="feedbackList" class="feedback-feed">
+          {% for item in initial_eval.feedback %}
+            <li class="feedback-item {% if 'Sensor fault' in item %}alert-fault{% elif 'Excellent' in item or 'optimal' in item or 'achieved' in item %}alert-excellent{% else %}alert-suboptimal{% endif %}">
+              <span>›</span>
+              <span>{{ item }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    function syncInputs(sourceId, targetId, labelId, unit) {
+      const val = document.getElementById(sourceId).value;
+      document.getElementById(targetId).value = val;
+      if (labelId) {
+        document.getElementById(labelId).innerText = val + unit;
+      }
+    }
+
+    function applyPreset(t3, t8, t13, coast) {
+      document.getElementById('t3Slider').value = t3;
+      document.getElementById('t3Number').value = t3;
+      document.getElementById('t3Label').innerText = t3 + ' kW';
+
+      document.getElementById('t8Slider').value = t8;
+      document.getElementById('t8Number').value = t8;
+      document.getElementById('t8Label').innerText = t8 + ' kW';
+
+      document.getElementById('t13Slider').value = t13;
+      document.getElementById('t13Number').value = t13;
+      document.getElementById('t13Label').innerText = t13 + ' kW';
+
+      document.getElementById('coastSlider').value = coast;
+      document.getElementById('coastNumber').value = coast;
+      document.getElementById('coastLabel').innerText = coast + ' m';
+
+      handleEvaluationSubmit();
+    }
+
+    async function handleEvaluationSubmit(e) {
+      if (e) e.preventDefault();
+
+      const btn = document.getElementById('submitBtn');
+      const originalText = btn.innerText;
+      btn.innerText = 'PROCESSING TELEMETRY...';
+      btn.disabled = true;
+
+      const driverName = document.getElementById('driverSelect').value;
+      const lapNumber = parseInt(document.getElementById('lapInput').value, 10) || 1;
+      const turn3Regen = parseFloat(document.getElementById('t3Number').value) || 0;
+      const turn8Regen = parseFloat(document.getElementById('t8Number').value) || 0;
+      const turn13Regen = parseFloat(document.getElementById('t13Number').value) || 0;
+      const coastDist = parseFloat(document.getElementById('coastNumber').value) || 0;
+
+      const payload = {
+        driver_name: driverName,
+        lap_number: lapNumber,
+        turn_3_peak_regen_kw: turn3Regen,
+        turn_8_peak_regen_kw: turn8Regen,
+        turn_13_peak_regen_kw: turn13Regen,
+        lift_and_coast_distance_m: coastDist
+      };
+
+      try {
+        const response = await fetch('/api/v1/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error('Evaluation request failed with status ' + response.status);
+        }
+
+        const data = await response.json();
+        updateDashboardUI(data);
+
+        // Update telemetry chart image
+        const chartImg = document.getElementById('telemetryChart');
+        const chartUrl = `/api/v1/chart?turn_3_regen=${encodeURIComponent(data.turn_3_peak_regen_kw)}&turn_8_regen=${encodeURIComponent(data.turn_8_peak_regen_kw)}&turn_13_regen=${encodeURIComponent(data.turn_13_peak_regen_kw)}&coasting_distance=${encodeURIComponent(data.lift_and_coast_distance_m)}&lap_number=${lapNumber}&driver_name=${encodeURIComponent(driverName)}&t=${Date.now()}`;
+        chartImg.src = chartUrl;
+
+        const downloadBtn = document.getElementById('downloadChartBtn');
+        if (downloadBtn) {
+          downloadBtn.href = chartUrl;
+        }
+
+      } catch (err) {
+        console.error('Telemetry update failed:', err);
+      } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    function updateDashboardUI(data) {
+      // Score value & class
+      const scoreEl = document.getElementById('scoreVal');
+      scoreEl.innerHTML = `${data.efficiency_score}<span class="sub">/ 100</span>`;
+      scoreEl.className = 'metric-val ' + (
+        data.rating === 'EXCELLENT' ? 'score-excellent' :
+        data.rating === 'OPTIMAL' ? 'score-optimal' : 'score-needs-improvement'
+      );
+
+      // Rating badge
+      const ratingEl = document.getElementById('ratingBadge');
+      ratingEl.innerText = data.rating;
+      ratingEl.className = 'rating-badge ' + (
+        data.rating === 'EXCELLENT' ? 'badge-excellent' :
+        data.rating === 'OPTIMAL' ? 'badge-optimal' : 'badge-needs_improvement'
+      );
+
+      // Points Breakdown
+      document.getElementById('brakingPointsVal').innerHTML = `${data.braking_points}<span class="sub">/ 50 pts</span>`;
+      document.getElementById('coastingPointsVal').innerHTML = `${data.lift_and_coast_points}<span class="sub">/ 50 pts</span>`;
+
+      document.getElementById('t3Status').innerText = data.turn_3_peak_regen_kw >= 500 ? '✓ 20 pts' : '✗ 0 pts';
+      document.getElementById('t8Status').innerText = data.turn_8_peak_regen_kw >= 480 ? '✓ 10 pts' : '✗ 0 pts';
+      document.getElementById('t13Status').innerText = data.turn_13_peak_regen_kw >= 500 ? '✓ 20 pts' : '✗ 0 pts';
+
+      // Sensor fault banner
+      const banner = document.getElementById('sensorBanner');
+      const icon = document.getElementById('sensorIcon');
+      const text = document.getElementById('sensorText');
+
+      if (data.sensor_fault_detected) {
+        banner.className = 'sensor-alert-box sensor-fault';
+        icon.innerText = '⚠️';
+        text.innerText = 'SENSOR FAULT DETECTED: Telemetry exceeded 600 kW physical limit. Value capped at 600.0 kW.';
+      } else {
+        banner.className = 'sensor-alert-box sensor-ok';
+        icon.innerText = '✓';
+        text.innerText = 'MGU-K SENSORS OPERATING NORMALLY (Within 600 kW Gen3 Evo Physical Envelope)';
+      }
+
+      // Feedback list
+      const feedList = document.getElementById('feedbackList');
+      feedList.innerHTML = '';
+      (data.feedback || []).forEach(item => {
+        const li = document.createElement('li');
+        let alertClass = 'alert-suboptimal';
+        if (item.includes('Sensor fault') || item.includes('CRITICAL')) {
+          alertClass = 'alert-fault';
+        } else if (item.includes('Excellent') || item.includes('optimal') || item.includes('achieved')) {
+          alertClass = 'alert-excellent';
+        }
+        li.className = `feedback-item ${alertClass}`;
+        li.innerHTML = `<span>›</span><span>${item}</span>`;
+        feedList.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>

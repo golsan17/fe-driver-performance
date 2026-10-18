@@ -1,0 +1,62 @@
+# ==============================================================================
+# Google Cloud Build Pipeline for Formula E Driver Performance Service
+# ==============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # Step 1: Run Pytest Suite
+  # ----------------------------------------------------------------------------
+  - name: 'python:3.12-slim'
+    id: 'run-pytest'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install --no-cache-dir -r requirements.txt pytest httpx
+        pytest test_main.py -v
+
+  # ----------------------------------------------------------------------------
+  # Step 2: Build Multi-Stage Docker Image
+  # ----------------------------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-docker-image'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-west2-docker.pkg.dev/$PROJECT_ID/fe-repo/fe-driver-performance:${_TAG}'
+      - '.'
+
+  # ----------------------------------------------------------------------------
+  # Step 3: Push Docker Image to Google Artifact Registry
+  # ----------------------------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-to-artifact-registry'
+    args:
+      - 'push'
+      - 'europe-west2-docker.pkg.dev/$PROJECT_ID/fe-repo/fe-driver-performance:${_TAG}'
+
+  # ----------------------------------------------------------------------------
+  # Step 4: Deploy to Google Cloud Run (Managed)
+  # Note: --allow-unauthenticated and --no-invoker-iam-check omitted per spec
+  # ----------------------------------------------------------------------------
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-to-cloud-run'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'fe-driver-performance'
+      - '--image=europe-west2-docker.pkg.dev/$PROJECT_ID/fe-repo/fe-driver-performance:${_TAG}'
+      - '--region=europe-west2'
+      - '--platform=managed'
+      - '--quiet'
+
+# Register built image in Cloud Build output artifacts
+images:
+  - 'europe-west2-docker.pkg.dev/$PROJECT_ID/fe-repo/fe-driver-performance:${_TAG}'
+
+# Default substitutions for tag parameterization
+substitutions:
+  _TAG: 'latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
