@@ -41,17 +41,20 @@ gcloud developer-connect connections git-repository-links create "$REPO_NAME" \
     --quiet || echo "Repository link may already exist."
 
 REPO_RESOURCE="projects/$PROJECT_ID/locations/$REGION/connections/$CONNECTION_NAME/gitRepositoryLinks/$REPO_NAME"
+PROJECT_NUM=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
+SERVICE_ACCOUNT="projects/$PROJECT_ID/serviceAccounts/${PROJECT_NUM}-compute@developer.gserviceaccount.com"
 
 echo "==> Creating Cloud Build push trigger 'fe-driver-performance-push'..."
-gcloud builds triggers create github \
+gcloud beta builds triggers create developer-connect \
     --project="$PROJECT_ID" \
     --name="fe-driver-performance-push" \
     --region="$REGION" \
-    --repository="$REPO_RESOURCE" \
+    --git-repository-link="$REPO_RESOURCE" \
     --branch-pattern="^main$" \
     --build-config="cloudbuild.yaml" \
+    --service-account="$SERVICE_ACCOUNT" \
     --description="Continuous Integration & Deployment trigger for Formula E Driver Performance on push to main" \
-    --quiet
+    --quiet || echo "Trigger may already exist."
 
 echo "==> Trigger successfully configured!"
 gcloud builds triggers describe "fe-driver-performance-push" --region="$REGION" --project="$PROJECT_ID"
